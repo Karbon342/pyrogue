@@ -616,7 +616,7 @@ class Loot(Item):
         if descr == "":
             self.text = random.choice(["trash", "meat", "coin", "knife", "rags",
                                        "spoon", "stone", "sword", "armor", "gem",
-                                       "healing potion", "shield", "bread"])
+                                       "healing potion", "shield", "bread","magic_scroll"])
         else:
             self.text = descr
 
@@ -921,6 +921,7 @@ class PygView(object):
         PygView.TRADER = pygame.image.load(os.path.join("images", "hakim.png"))
         PygView.DRUID = pygame.image.load(os.path.join("images", "druid.png"))
         PygView.GAMEOVER = pygame.image.load(os.path.join("images", "gameover.jpg"))
+        PygView.GAMEOVEREAT = pygame.image.load(os.path.join("images", "hunger.png"))
         # --------- create player instance --------------
         self.player = Player(x, y, xp, level, hp)
         # ---- ask player to enter his name --------
@@ -1149,6 +1150,43 @@ class PygView(object):
                     elif event.key == pygame.K_QUESTION or event.key == pygame.K_h:
                         display_textlines(self.hilftextlines, self.screen)
                         continue
+                    elif event.key == pygame.K_6:
+                        while True:
+                            antwort = input("Input: ")
+                            if antwort.lower() == "health":
+                                self.player.hitpoints = 100
+                                print("Healthed")
+                                Flytext(self.player.x, self.player.y, "Healthed")
+                            elif antwort.lower() == "feed":
+                                self.player.hunger = 0
+                                print("Feeded")
+                                Flytext(self.player.x, self.player.y, "Feeded")
+                            elif antwort.lower() == "xp":
+                                self.player.xp += 100
+                                print("Players XP: " + str(self.player.xp))
+                                self.player.check_levelup()
+                            elif antwort.lower() == "nodmg":
+                                self.player.damaged = False
+                                print("Players Damaged: " + str(self.player.damaged))
+                            elif antwort.lower() == "buffs":
+                                self.player.dexterity += 100
+                                print("Players Dexterity " + str(self.player.dexterity))
+                                self.player.intelligence += 100
+                                print("Players Intelligence " + str(self.player.intelligence))
+                            elif antwort.lower() == "addkill":
+                                self.player.kills += 1
+                                print("Players Kills: " + str(self.player.kills))
+                            elif antwort.lower() == "mana":
+                                self.player.mana += 100
+                                print("Players Mana: " + str(self.player.mana))
+                            elif antwort.lower() == "strength":
+                                self.player.strength += 100
+                                print("Players Strenght " + str(self.player.strength))
+                            elif antwort.lower() == "exit":
+                                print("Exiting Cheat Menu")
+                                break
+                            else:
+                                print("Cant find command")    
                     elif event.key == pygame.K_PERIOD or event.key == pygame.K_RETURN:
                         pass      # player is idle for one turn
 
@@ -1390,7 +1428,10 @@ class PygView(object):
         lines.append("------------ You killed: ------------")
         for v in self.player.killdict:
             lines.append("{} {}".format(self.player.killdict[v], v))
-        display_textlines(lines, self.screen,  (255, 255, 255), PygView.GAMEOVER)
+        if self.player.hunger >99:
+            display_textlines(lines, self.screen,  (255, 255, 255), PygView.GAMEOVEREAT)
+        else:
+            display_textlines(lines, self.screen,  (255, 255, 255), PygView.GAMEOVER)
         # ------------ game over -----------------
         pygame.mixer.music.stop()
         for line in lines:
@@ -1401,7 +1442,7 @@ class PygView(object):
 
 if __name__ == '__main__':
     # add your own level files here. use os.path.join() for other folders
-    sourcefilenames = ["level001.txt", "level002.txt"]
+    sourcefilenames = ["level001.txt", "level002.txt","level003.txt","level004.txt"]
     levels = Level.check_levels(sourcefilenames)         # testing level for design errors
     # 800 x 600 pixel, Player start at x=1, y=1, in level 0 (the first level) with 0 xp, has level 1 and 50 hit points
     PygView(levels, 800, 600, 1, 1, 0, 1, 50).run()
