@@ -301,7 +301,9 @@ class Monster(object):
         self.y = y
         self.xp = xp
         self.kills = 0
+        self.mana = 0
         self.killdict = {}
+        self.fireaura = False
         self.hunger = 0
         self.level = level   # each monster starts with level 1, may progress into higher levels
         self.rank = ""
@@ -330,7 +332,18 @@ class Monster(object):
         zeroitems = [k for k, v in self.inventory.items() if v < 1]
         for key in zeroitems:
             del self.inventory[key]
-
+            
+    def update(self, player):
+        """monster get burned by players flame aura?"""
+        #print("Abstand:", abs(player.x - self.x), abs(player.y - self.y))
+        if abs(player.x - self.x) < 3  and abs(player.y - self.y) < 3:
+            # steht neben player
+            damage = random.randint(3,6)
+            self.hitpoints -= damage
+            Flytext(self.x , self.y , "-{} hp flame damage".format(damage))
+            #print("flame damage:", damage)
+            
+            
     def check_levelup(self):
         return ""
 
@@ -427,14 +440,15 @@ class Player(Monster):
         Monster.__init__(self, x, y, xp, level, hp, picture)
         self.rank = "unworthy"
         self.name = "anonymous"  # will be overwritten by main loop
-        self.inventory = {"shield": 1, "fist": 1}  # player start with shield and fist only
+        self.inventory = {"shield": 1, "fist": 1, "meat": 2}  # player start with shield and fist only
         self.z = 0
         self.keys = []
         self.story1 = False  # for story missions
         self.story2 = False  # for story missions
         self.story3 = False  # for story missions
+        self.fireaura = False
         # self.hunger = 0   # already defined in class Monster, because combat makes hungry
-        self.mana = 0
+        self.mana = 50
         if hp == 0:
             self.hitpoints = random.randint(5, 10)
         else:
@@ -444,6 +458,20 @@ class Player(Monster):
             self.picture = PygView.PLAYERPICTURE
         else:
             self.picture = picture
+
+    def update(self):
+        """everything a monster has to do every turn, like managing fire aura"""
+        if self.fireaura:
+            self.mana -= 1
+            self.picture = random.choice((PygView.FLAME1,
+                                          PygView.FLAME2,
+                                          PygView.FLAME3,
+                                          PygView.FLAME4))
+            if self.mana <= 0:
+                self.fireaura = False
+        else:
+            self.picture = PygView.PLAYERPICTURE 
+        print(self.picture)
 
     def detect(self):
         """rolls a test to detect a hidden trap, with bonus for intelligence (2/3) and dexterity (1/3)"""
@@ -616,7 +644,7 @@ class Loot(Item):
         if descr == "":
             self.text = random.choice(["trash", "meat", "coin", "knife", "rags",
                                        "spoon", "stone", "sword", "armor", "gem",
-                                       "healing potion", "shield", "bread","magic_scroll"])
+                                       "healing potion", "shield", "bread",""])
         else:
             self.text = descr
 
@@ -917,11 +945,16 @@ class PygView(object):
         PygView.LOOT = PygView.MAIN.image_at((155, 672, 32, 32), (0, 0, 0))
         PygView.KEY = PygView.FIGUREN.image_at((54, 1682, 32, 32), (0, 0, 0))
         PygView.SIGN = PygView.GUI.image_at((197, 0, 32, 32), (0, 0, 0))
+        PygView.FLAME1 = pygame.image.load(os.path.join("images", "spielerflamme1.png"))
+        PygView.FLAME2 = pygame.image.load(os.path.join("images", "spielerflamme2.png"))
+        PygView.FLAME3 = pygame.image.load(os.path.join("images", "spielerflamme3.png"))
+        PygView.FLAME4 = pygame.image.load(os.path.join("images", "spielerflamme4.png"))
         # ------- portraits -----
         PygView.TRADER = pygame.image.load(os.path.join("images", "hakim.png"))
         PygView.DRUID = pygame.image.load(os.path.join("images", "druid.png"))
         PygView.GAMEOVER = pygame.image.load(os.path.join("images", "gameover.jpg"))
         PygView.GAMEOVEREAT = pygame.image.load(os.path.join("images", "hunger.png"))
+        
         # --------- create player instance --------------
         self.player = Player(x, y, xp, level, hp)
         # ---- ask player to enter his name --------
@@ -967,6 +1000,7 @@ class PygView(object):
         self.hilftextlines.append("[q]..................quaff healing potion")
         self.hilftextlines.append("[e]..................eat")
         self.hilftextlines.append("[Enter]..............wait an turn (monsters move!)")
+        self.hilftextlines.append("[f]..................activate fireaura")
         self.hilftextlines.append("- - - - - - - - - - - - - - - - - - - - - - - - - - - -")
 
     def paint_map(self):
@@ -1032,7 +1066,10 @@ class PygView(object):
             if not monster.damaged:
                 monster.hpmax = monster.hitpoints
             # calculate health percentage, 100% = 32 pixel
-            health = round(((monster.hitpoints / (monster.hpmax / 100)) / 100) * 32,0)
+            try:
+                health = round(((monster.hitpoints / (monster.hpmax / 100)) / 100) * 32,0)
+            except:
+                print("division by zero in line 1069", monster)
             # shows a maximum of 31 hitpoints as full green health-bar, with red from the right if less healthy
             # pygame.draw.rect(self.screen, (255,255,255), (PygView.scrollx + monster.x * 32,
             #    PygView.scrolly + monster.y * 32 - 15,32,4))
@@ -1119,6 +1156,13 @@ class PygView(object):
                         # ----------- show inventory (inventory) -----------------
                         display_textlines(self.player.show_inventory(), self.screen, image=PygView.TRADER)
                         continue  # do not move monsters etc., wait for next keyboard command
+                    elif event.key == pygame.K_f: # taste f feueraura
+                        if not self.player.fireaura and self.player.mana >= 10:
+                            self.player.mana -=10
+                            self.player.fireaura = True  # einschalten 
+                        elif self.player.fireaura:
+                            self.player.fireaura = False # ausschalten
+                    
                     elif event.key == pygame.K_PLUS:
                         # ----- zoom in minimap
                         self.mapzoom += 1
@@ -1380,7 +1424,9 @@ class PygView(object):
                     # ------------------- level update (remove old traps, doors etc.) ------
                     self.level.update()                                             # tote monster löschen
                     # -------------- move monsters ------------------
+                    self.player.update()
                     for monster in self.level.monsters:
+                        monster.update(self.player) # checking fireaura
                         x, y = monster.x, monster.y
                         dx, dy = monster.ai(self.player)
                         if self.level.is_monster(x + dx, y + dy):
