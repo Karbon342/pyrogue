@@ -336,13 +336,14 @@ class Monster(object):
     def update(self, player):
         """monster get burned by players flame aura?"""
         #print("Abstand:", abs(player.x - self.x), abs(player.y - self.y))
-        if abs(player.x - self.x) < 3  and abs(player.y - self.y) < 3:
-            # steht neben player
-            damage = random.randint(3,6)
-            self.hitpoints -= damage
-            Flytext(self.x , self.y , "-{} hp flame damage".format(damage))
-            #print("flame damage:", damage)
-            
+        if player.fireaura:
+            if abs(player.x - self.x) < 3  and abs(player.y - self.y) < 3:
+                # steht neben player
+                damage = random.randint(3,6)
+                self.hitpoints -= damage
+                Flytext(self.x , self.y , "-{} hp flame damage".format(damage))
+                #print("flame damage:", damage)
+                
             
     def check_levelup(self):
         return ""
