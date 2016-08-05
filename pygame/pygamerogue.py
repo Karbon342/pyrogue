@@ -425,6 +425,22 @@ class EliteWarrior(Boss):
         # self.strength = random.randint(12,24)   # more strength
         self.inventory["sword"] = 1             # 100% chance to start with good equipment
         # self.inventory["shield"] = 1
+        
+class Ghost(Boss):
+    def __init__(self, x, y, xp=0, level=1, hp=0, picture=""):
+        Monster.__init__(self, x, y, xp, level, hp, picture)
+        self.strength = 12
+        self.hitpoints = 12
+        self.picture = PygView.GHOST
+        self.inventory["sword"] = 1   
+        
+class Konigboss(Boss):
+    def __init__(self, x, y, xp=0, level=1, hp=0, picture=""):
+        Monster.__init__(self, x, y, xp, level, hp, picture)
+        self.strength = 12
+        self.hitpoints = 50
+        self.picture = PygView.KONIGBOSS
+        self.inventory["sword"] = 1             
 
 
 class Golem(Boss):
@@ -444,6 +460,7 @@ class Player(Monster):
         self.inventory = {"shield": 1, "fist": 1, "meat": 2}  # player start with shield and fist only
         self.z = 0
         self.keys = []
+        self.pickaxes = []
         self.story1 = False  # for story missions
         self.story2 = False  # for story missions
         self.story3 = False  # for story missions
@@ -472,7 +489,7 @@ class Player(Monster):
                 self.fireaura = False
         else:
             self.picture = PygView.PLAYERPICTURE 
-        print(self.picture)
+        #print(self.picture)
 
     def detect(self):
         """rolls a test to detect a hidden trap, with bonus for intelligence (2/3) and dexterity (1/3)"""
@@ -549,6 +566,11 @@ class Floor(Block):
     def __init__(self):
         Block.__init__(self)
         self.picture = random.choice((PygView.FLOOR, PygView.FLOOR1))
+        
+class Stonefloor(Block):
+    def __init__(self):
+        Block.__init__(self)
+        self.picture = PygView.STONEFLOOR      
 
 
 class Wall(Block):
@@ -628,6 +650,12 @@ class Key(Item):
         Item.__init__(self, x, y)
         self.color = color
         self.picture = PygView.KEY
+        
+class Pickaxe(Item):
+    def __init__(self, x, y, color="dull"):
+        Item.__init__(self, x, y)
+        self.color = color
+        self.picture = PygView.PICKAXE        
 
 
 class Door(Item):
@@ -637,6 +665,12 @@ class Door(Item):
         self.closed = True
         self.picture = PygView.DOOR
         self.color = color
+        
+class Broken_Block(Door):
+    def __init__(self, x, y, color="dull"):
+        Door.__init__(self, x, y)
+        self.picture = PygView.BROKEN_BLOCK 
+               
 
 
 class Loot(Item):
@@ -645,7 +679,7 @@ class Loot(Item):
         if descr == "":
             self.text = random.choice(["trash", "meat", "coin", "knife", "rags",
                                        "spoon", "stone", "sword", "armor", "gem",
-                                       "healing potion", "shield", "bread",""])
+                                       "healing potion", "shield", "bread","mana potion"])
         else:
             self.text = descr
 
@@ -680,7 +714,12 @@ class Level(object):
         "S": "Statue",
         "L": "loot",
         "a": "Apple",
-        "k": "key"
+        "k": "key",
+        "_": "Stonefloor",
+        "+": "Ghost",
+        "A": "KONIGBOSS",
+        "Y": "Broken_Block",
+        "O": "Pickaxe"
     }
 
     @staticmethod
@@ -777,6 +816,8 @@ class Level(object):
         self.fruits = []
         self.loot = []
         self.keys = []
+        self.pickaxes = []
+        #self.broken_blocks = []
         self.width = 0
         self.depth = 0
         y = 0
@@ -787,15 +828,24 @@ class Level(object):
                 self.layout[(x, y)] = Floor()
                 if char == "M":
                     self.monsters.append(random.choice([Goblin(x, y), Wolf(x, y)]))  # insert your own Monsters here
-                elif char == "B":
-                    # insert your own boss monsters here
-                    self.monsters.append(random.choice([EliteWarrior(x, y), Golem(x, y)]))
+                elif char == "_":
+                    self.layout[(x, y)] = Stonefloor()
+               # elif char == "B":       # insert your own boss monsters here
+                  #  self.layout[(x, y)] = Stonefloor()
                 elif char == "S":
                     self.monsters.append(Statue(x, y))  # stationary Monster
                 elif char == "T":
                     self.traps.append(Trap(x, y))       # object on top of Floor()
+                elif char == "A":
+                    self.monsters.append(Konigboss(x, y)) 
+                elif char == "Y":
+                    self.doors.append(Broken_Block(x, y))   
+                elif char == "+":
+                    self.monsters.append(Ghost(x, y))    
                 elif char == "D":
-                    self.doors.append(Door(x, y))       # object on top of Floor()
+                    self.doors.append(Door(x, y))
+                elif char == "O":
+                    self.pickaxes.append(Pickaxe(x, y))           # object on top of Floor()
                 elif char == "a":
                     self.fruits.append(Fruit(x,y))     # object on top of Floor()
                 elif char == "L":
@@ -827,8 +877,11 @@ class Level(object):
         self.traps = [t for t in self.traps if t.hitpoints > 0]
         self.fruits = [f for f in self.fruits if f.hitpoints >0]
         self.keys = [k for k in self.keys if not k.carried]
+        self.pickaxes = [o for o in self.pickaxes if not o.carried]
         self.loot = [i for i in self.loot if not i.carried]
-        self.doors = [d for d in self.doors if d.closed]  # opened doors disappear
+        self.doors = [d for d in self.doors if d.closed] 
+        #self.broken_block = [Y for Y in self.broken_blocks if Y.closed]   # opened doors disappear
+        
         #print("fruits:", len(self.fruits))
 
     def is_monster(self, x, y):
@@ -940,11 +993,16 @@ class PygView(object):
         PygView.MONSTERPICTURE = PygView.FIGUREN.image_at((0, 0, 32, 32), (0, 0, 0))
         PygView.STATUE1 = PygView.FIGUREN.image_at((650, 960, 28, 32), (0, 0, 0))  # Sprite is less than 32 pixel width
         PygView.GOBLIN1 = PygView.FIGUREN.image_at((659, 990, 32, 32), (0, 0, 0))
+        PygView.STONEFLOOR = PygView.WALLS.image_at((354, 865, 32, 32), (0, 0, 0))
         PygView.WOLF1 = PygView.FIGUREN.image_at((667, 607, 32, 32), (0, 0, 0))
         PygView.WARRIOR1 = PygView.FIGUREN.image_at((405, 989, 32, 32), (0, 0, 0))
+        PygView.GHOST = PygView.FIGUREN.image_at((174, 1187, 32, 32), (0, 0, 0))
         PygView.DOOR = PygView.FEAT.image_at((32*2, 32, 32, 32))
         PygView.LOOT = PygView.MAIN.image_at((155, 672, 32, 32), (0, 0, 0))
-        PygView.KEY = PygView.FIGUREN.image_at((54, 1682, 32, 32), (0, 0, 0))
+        PygView.KEY = PygView.FIGUREN.image_at((54, 1683, 32, 32), (0, 0, 0))
+        PygView.PICKAXE = PygView.FIGUREN.image_at((777, 1651, 16, 13))   
+        PygView.KONIGBOSS = PygView.FIGUREN.image_at((140, 559, 31, 48), (0, 0, 0))
+        PygView.BROKEN_BLOCK = PygView.WALLS.image_at((896, 130, 32, 32))
         PygView.SIGN = PygView.GUI.image_at((197, 0, 32, 32), (0, 0, 0))
         PygView.FLAME1 = pygame.image.load(os.path.join("images", "spielerflamme1.png"))
         PygView.FLAME2 = pygame.image.load(os.path.join("images", "spielerflamme2.png"))
@@ -1002,6 +1060,7 @@ class PygView(object):
         self.hilftextlines.append("[e]..................eat")
         self.hilftextlines.append("[Enter]..............wait an turn (monsters move!)")
         self.hilftextlines.append("[f]..................activate fireaura")
+        #self.hilftextlines.append("[m]..................quaff mana potion")
         self.hilftextlines.append("- - - - - - - - - - - - - - - - - - - - - - - - - - - -")
 
     def paint_map(self):
@@ -1052,7 +1111,11 @@ class PygView(object):
                 for fruit in [f for f in self.level.fruits if f.x == x and f.y == y and f.hitpoints >0]:
                     self.background.blit(fruit.picture, (x* 32, y * 32))
                 for key in [k for k in self.level.keys if k.x == x and k.y == y and not k.carried]:
-                    self.background.blit(key.picture, (x * 32, y * 32))
+                    self.background.blit(key.picture, (x * 32, y * 32))  
+                #for Broken_Block in [y for y in self.level.broken_blocks if y.x == x and y.y == y and not y.carried]:
+                #    self.background.blit(Broken_Block.picture, (x * 32, y * 32))     
+                for pickaxe in [o for o in self.level.pickaxes if o.x == x and o.y == y and not o.carried]:
+                    self.background.blit(pickaxe.picture, (x * 32, y * 32))     
         # Scrolling: paint the player in the middle of the screen # TODO: improve gui layout
         PygView.scrollx = (self.width - self.gui_width) / 2 - self.player.x * 32
         PygView.scrolly = (self.height - self.gui_height) / 2 - self.player.y * 32
@@ -1192,6 +1255,12 @@ class PygView(object):
                         self.player.dx -= 1
                     elif event.key == pygame.K_RIGHT or event.key == pygame.K_d:
                         self.player.dx += 1
+                    elif event.key == pygame.K_o:
+                        Flytext(self.player.x, self.player.y, "+", dx=600, dy=-0)
+                        Flytext(self.player.x, self.player.y, "+", dx=-600, dy=-0)
+                        Flytext(self.player.x, self.player.y, "+", dx=0, dy=-600)
+                        Flytext(self.player.x, self.player.y, "+", dx=0, dy=600)                                                                                              
+                    
                     elif event.key == pygame.K_QUESTION or event.key == pygame.K_h:
                         display_textlines(self.hilftextlines, self.screen)
                         continue
@@ -1273,6 +1342,8 @@ class PygView(object):
                             else:
                                 self.status.append("{}: You have no healing potion. Gather more loot!".format(
                                                    self.turns))
+                    
+                    
                     elif event.key == pygame.K_e:
                         food = [i for i in self.player.inventory if (i == "bread" or i == "meat") and
                                 self.player.inventory[i] > 0]
@@ -1303,16 +1374,23 @@ class PygView(object):
                     # ----- testing if player runs into door
                     for door in [d for d in self.level.doors if d.x == self.player.x+self.player.dx and
                                  d.y == self.player.y + self.player.dy and d.closed]:
-                        if len(self.player.keys) > 0:
+                        name = type(door).__name__ 
+                        if name == "Door" and len(self.player.keys) > 0:
                             mykey = self.player.keys.pop()
                             door.closed = False  # unlocked !
                             self.status.append("{}: door unlocked! 1 key used up)".format(self.turns))
+                        elif name == "Broken_Block" and len(self.player.pickaxes) > 0:
+                            mykey = self.player.pickaxes.pop()
+                            door.closed = False  # unlocked !
+                            self.status.append("{}: Broken_Block destroyed! 1 pickaxe used up)".format(self.turns))
                         else:
                             self.player.dx, self.player.dy = 0, 0
-                            self.status.append("{}: Ouch! You bump into a door".format(self.turns))
+                            self.status.append("{}: Ouch! You bump into a closed door".format(self.turns))
                             self.player.hitpoints -= 1
                             self.player.damaged = True
                             Flytext(self.player.x, self.player.y, "Ouch! Dmg: 1 hp")
+                            
+                            
                     # ----------------- Finally the player is arrived at a new position --------
                     self.player.x += self.player.dx
                     self.player.y += self.player.dy
@@ -1412,6 +1490,15 @@ class PygView(object):
                             self.player.keys.append(key)
                             self.status.append("{} key found".format(self.turns))
                             Flytext(self.player.x, self.player.y, "a key", (0, 200, 0))
+                            
+                    for pickaxe in self.level.pickaxes:
+                        if pickaxe.x == self.player.x and pickaxe.y == self.player.y:
+                            pickaxe.carried = True
+                            self.player.pickaxes.append(pickaxe)
+                            self.status.append("{} pickaxe found".format(self.turns))
+                            Flytext(self.player.x, self.player.y, "a pickaxe", (0, 200, 0))        
+                            
+                           
                     # --------- is there loot ? --------------
                     for i in self.level.loot:
                         if i.x == self.player.x and i.y == self.player.y and not i.carried:
